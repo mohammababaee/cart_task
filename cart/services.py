@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 from cart.models import Cart, CartItem
 from product.models import Product, ProductInventory
 
@@ -6,6 +7,13 @@ from product.models import Product, ProductInventory
 class CartService:
     @staticmethod
     def get_or_create_active_cart(user):
+        # First, expire any existing active carts for the user
+        Cart.objects.filter(
+            user=user,
+            status=Cart.Status.ACTIVE,
+            is_expired=False
+        ).update(is_expired=True)
+        
         return Cart.objects.get_or_create(
             user=user,
             status=Cart.Status.ACTIVE,
@@ -22,6 +30,10 @@ class CartService:
     @staticmethod
     @transaction.atomic
     def add_item_to_cart(cart, product_id, quantity):
+        # Check if cart is expired
+        if cart.is_expired:
+            raise ValueError("Cart has expired")
+
         product = Product.objects.get(id=product_id)
         product_inventory = ProductInventory.objects.get(product=product)
 
@@ -37,6 +49,10 @@ class CartService:
 
         product_inventory.quantity_available -= quantity
         product_inventory.save()
+
+        # Update cart's created_at to reset the expiration timer
+        cart.created_at = timezone.now()
+        cart.save()
 
         return cart_item
 
