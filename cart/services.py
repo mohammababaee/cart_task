@@ -7,13 +7,6 @@ from product.models import Product, ProductInventory
 class CartService:
     @staticmethod
     def get_or_create_active_cart(user):
-        # First, expire any existing active carts for the user
-        Cart.objects.filter(
-            user=user,
-            status=Cart.Status.ACTIVE,
-            is_expired=False
-        ).update(is_expired=True)
-        
         return Cart.objects.get_or_create(
             user=user,
             status=Cart.Status.ACTIVE,

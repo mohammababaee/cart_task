@@ -31,15 +31,14 @@ class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
     total_items = serializers.SerializerMethodField()
     total_price = serializers.SerializerMethodField()
-    user_email = serializers.EmailField(source='user.email', read_only=True)
     
     class Meta:
         model = Cart
         fields = [
-            'id', 'user', 'user_email', 'status', 'is_expired', 
+            'id', 'user', 'status', 'is_expired', 
             'created_at', 'items', 'total_items', 'total_price'
         ]
-        read_only_fields = ['id', 'user', 'user_email', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
     
     def get_total_items(self, obj):
         return sum(item.quantity for item in obj.items.all())
