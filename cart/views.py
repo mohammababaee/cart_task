@@ -4,58 +4,60 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 
 from cart.models import Cart, CartItem
 from product.models import Product, ProductInventory
+from cart.serializers import (
+    CartSerializer,
+    CartItemSerializer,
+    AddToCartSerializer
+)
+from cart.services import CartService
 
 
 class AddToCartView(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = AddToCartSerializer
 
     def post(self, request):
-        product_id = request.data.get("product_id")
-        quantity = int(request.data.get("quantity", 1))
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if not product_id or quantity <= 0:
-            return Response({"error": "داده اشتباه است"}, status=400)
-
-        try:
-            product = Product.objects.get(id=product_id)
-            product_inventory = ProductInventory.objects.get(product=product)
-        except (Product.DoesNotExist, ProductInventory.DoesNotExist):
-            return Response({"error": "محصول یافت نشد"}, status=404)
-
-        if product_inventory.quantity_available < quantity:
-            return Response({"error": "تعداد مورد نظر موجود نیست"}, status=400)
-
-        user = request.user
-        cart, created = Cart.objects.get_or_create(
-            user=user,
-            status=Cart.Status.ACTIVE,
-            is_expired=False
-        )
-
-        # Check if product already exists in cart
-        cart_item, item_created = CartItem.objects.get_or_create(
+        cart, _ = CartService.get_or_create_active_cart(request.user)
+        cart_item = CartService.add_item_to_cart(
             cart=cart,
-            product=product,
-            defaults={'quantity': quantity}
+            product_id=serializer.validated_data['product_id'],
+            quantity=serializer.validated_data['quantity']
         )
-
-        if not item_created:
-            # Update quantity if item already exists
-            cart_item.quantity += quantity
-            cart_item.save()
-            product_inventory.quantity_available -= quantity
-            product_inventory.save()
 
         return Response({
-            "message": "آیتم به سبد اضافه شد",
+            "message": "Item added to cart successfully",
             "cart_id": cart.id,
-            "item": {
-                "product_id": product.id,
-                "product_name": product.name,
-                "quantity": cart_item.quantity,
-                "price": float(product.price)
-            }
-        }, status=201)
+            "item": CartItemSerializer(cart_item).data
+        }, status=status.HTTP_201_CREATED)
+
+
+class CartDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CartSerializer
+
+    def get(self, request, cart_id):
+        cart = CartService.get_cart_by_id(cart_id)
+        if not cart:
+            return Response(
+                {"error": "Cart not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if cart.user != request.user:
+            return Response(
+                {"error": "You don't have permission to view this cart"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = self.serializer_class(cart)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        
