@@ -11,7 +11,7 @@ class Cart(models.Model):
     
     class Status(models.TextChoices):
         ACTIVE = 'active', 'Active'
-        PAIED = 'paied', 'Paied'
+        PAID = 'paid', 'Paid'
         INITIALIZED = 'initialized', 'Initialized'
         CANCELED = 'canceled', 'Canceled'
         
