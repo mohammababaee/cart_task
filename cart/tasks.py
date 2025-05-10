@@ -22,10 +22,8 @@ def restore_cart_items_to_inventory():
 
     for cart in inactive_carts:
         with transaction.atomic():
-            # Get all items in the cart
             cart_items = cart.items.all()
             
-            # Restore each item to inventory
             for item in cart_items:
                 try:
                     inventory = ProductInventory.objects.get(product=item.product)
@@ -34,8 +32,9 @@ def restore_cart_items_to_inventory():
                 except ProductInventory.DoesNotExist:
                     continue
 
-            # Mark cart as expired
             cart.is_expired = True
+            cart.save()
+            cart.status = cart.status.CANCELED
             cart.save()
 
     return f"Processed {inactive_carts.count()} inactive carts" 

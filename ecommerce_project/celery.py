@@ -11,7 +11,6 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 app.autodiscover_tasks()
 
-# Configure periodic tasks
 app.conf.beat_schedule = {
     'restore-cart-items': {
         'task': 'cart.tasks.restore_cart_items_to_inventory',
