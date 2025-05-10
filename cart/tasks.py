@@ -34,7 +34,7 @@ def restore_cart_items_to_inventory():
 
             cart.is_expired = True
             cart.save()
-            cart.status = cart.status.CANCELED
+            cart.status = Cart.status.CANCELED
             cart.save()
 
     return f"Processed {inactive_carts.count()} inactive carts" 
